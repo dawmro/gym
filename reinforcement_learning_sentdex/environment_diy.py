@@ -17,11 +17,11 @@ MOVE_PENALTY = 1
 ENEMY_PEANLTY = 300
 FOOD_REWARD = 25
 
-epsilon = 0.5
+epsilon = 0.1
 EPS_DECAY = 0.9998
-SHOW_EVERY = 1000
+SHOW_EVERY = 10
 
-start_q_table = None
+start_q_table = "qtable-1717284764.pickle"
 
 LEARNING_RATE = 0.1
 DISCOUNT = 0.95
@@ -133,8 +133,8 @@ for episode in range(HM_EPISODES):
         player.action(action)
 
         #### todo
-        # enemy.move()
-        # food.move()
+        enemy.move()
+        food.move()
         ##########
 
         # contact with enemy
