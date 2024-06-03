@@ -12,16 +12,16 @@ style.use("ggplot")
 # 10 by 10 grid
 SIZE = 10
 # how many episodes
-HM_EPISODES = 25000
+HM_EPISODES = 75000
 MOVE_PENALTY = 1
 ENEMY_PEANLTY = 300
 FOOD_REWARD = 25
 
-epsilon = 0.1
+epsilon = 0.9
 EPS_DECAY = 0.9998
-SHOW_EVERY = 10
+SHOW_EVERY = HM_EPISODES // 10
 
-start_q_table = "qtable-1717284764.pickle"
+start_q_table = None #"qtable-1717284764.pickle"
 
 LEARNING_RATE = 0.1
 DISCOUNT = 0.95
@@ -51,13 +51,22 @@ class Blob:
     
     def action(self, choice):
         if choice == 0:
-            self.move(x=1, y=1)
+            self.move(x=0, y=1) # ^
         elif choice == 1:
-            self.move(x=-1, y=-1)
+            self.move(x=1, y=1) # ^>
         elif choice == 2:
-            self.move(x=-1, y=1)
+            self.move(x=1, y=0) # >
         elif choice == 3:
-            self.move(x=1, y=-1)
+            self.move(x=1, y=-1) # v>
+        elif choice == 4:
+            self.move(x=0, y=-1) # v
+        elif choice == 5:
+            self.move(x=-1, y=-1) # <v
+        elif choice == 6:
+            self.move(x=-1, y=0) # <
+        elif choice == 7:
+            self.move(x=-1, y=1) # <^
+ 
 
     def move(self, x=False, y=False):
         if not x:
@@ -90,7 +99,9 @@ print(food)
 print(player-food)
 player.move()
 print(player-food)
-player.action(2)
+player.action(0)
+print(player-food)
+player.action(1)
 print(player-food)
 
 
@@ -104,7 +115,7 @@ if start_q_table is None:
                 for y2 in range(-SIZE+1, SIZE):
                     # add every combination to table
                     # key in table is tuple of tuples, values initialized as random
-                    q_table[((x1, y1), (x2, y2))] = [np.random.uniform(-5, 0) for i in range(4)]
+                    q_table[((x1, y1), (x2, y2))] = [np.random.uniform(-5, 0) for x1 in range(8)]
 else:
     with open(start_q_table, "rb") as f:
         q_table = pickle.load(f)
@@ -128,13 +139,13 @@ for episode in range(HM_EPISODES):
         if np.random.random() > epsilon:
             action = np.argmax(q_table[obs])
         else:
-            action = np.random.randint(0,4)
+            action = np.random.randint(0,8)
 
         player.action(action)
 
         #### todo
-        enemy.move()
-        food.move()
+        #enemy.move()
+        #food.move()
         ##########
 
         # contact with enemy
