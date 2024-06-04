@@ -17,6 +17,7 @@ MIN_REPLAY_MEMORY_SIZE = 1_000
 MODEL_NAME = "256x2"
 MINIBATCH_SIZE = 64
 DISCOUNT = 0.99
+UPDATE_TARGET_EVERY = 5
 
 
 # Own Tensorboard class
@@ -124,5 +125,12 @@ class DQNAgent:
                        shuffle=False, callbacks=[self.tensorboard] if terminal_state else None)
         
 
-
+        # determine if it is time to update target_model yet
+        if terminal_state:
+            self.target_update_counter += 1
+        if self.target_update_counter > UPDATE_TARGET_EVERY:
+            # copy weights from initial model
+            self.target_model.set_weights(self.model.get_weights())
+            # reset counter
+            self.target_update_counter = 0
         
