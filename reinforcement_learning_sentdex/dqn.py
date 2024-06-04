@@ -7,12 +7,16 @@ from keras.callbacks import TensorBoard
 from keras.optimizers import Adam
 from collections import deque
 
+import random
 import numpy as np
 import time
 
 
 REPLAY_MEMORY_SIZE = 50_000
+MIN_REPLAY_MEMORY_SIZE = 1_000
 MODEL_NAME = "256x2"
+MINIBATCH_SIZE = 64
+DISCOUNT = 0.99
 
 
 # Own Tensorboard class
@@ -87,3 +91,38 @@ class DQNAgent:
 
     def get_qs(self, state, step):
         return self.model_predict(np.array(state).reshape(-1, *state.shape)/255)[0]
+    
+    def train(self, terminal_state, step):
+        if len(self.replay_memory) < MIN_REPLAY_MEMORY_SIZE:
+            return
+        
+        minibatch = random.sample(self.replay_memory, MINIBATCH_SIZE)
+
+        current_states = np.array([transition[0] for transition in minibatch])/255
+        current_qs_list = self.model.predict(current_states)
+
+        new_current_states = np.array([transition[3] for transition in minibatch])/255
+        future_qs_list  = self.target_model.predict(new_current_states)
+
+        X = []
+        y = []
+
+        for index, (current_state, action, reward, new_current_state, done) in enumerate(minibatch):
+            if not done:
+                max_future_q = np.max(future_qs_list[index])
+                new_q = reward + DISCOUNT * max_future_q
+            else:
+                new_q
+            
+            current_qs = current_qs_list[index]
+            current_qs[action] = new_q
+
+            X.append(current_state)
+            y.append(current_qs)
+
+        self.model.fit(np.array(X)/255, np.array(y), batch_size = MINIBATCH_SIZE, verbose=0, 
+                       shuffle=False, callbacks=[self.tensorboard] if terminal_state else None)
+        
+
+
+        
