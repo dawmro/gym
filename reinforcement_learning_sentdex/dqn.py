@@ -1,17 +1,19 @@
-import os
-os.environ["KERAS_BACKEND"] = "torch"
 
+
+import numpy as np
+import keras.backend as backend
 from keras.models import Sequential
 from keras.layers import Dense, Dropout, Conv2D, MaxPooling2D, Activation, Flatten
-from keras.callbacks import TensorBoard
 from keras.optimizers import Adam
+from keras.callbacks import TensorBoard
+import tensorflow as tf
 from collections import deque
-from PIL import Image
-
-import cv2
-import random
-import numpy as np
 import time
+import random
+from tqdm import tqdm
+import os
+from PIL import Image
+import cv2
 
 
 DISCOUNT = 0.99
@@ -120,7 +122,8 @@ ep_rewards = [-200]
 # For more repetitive results
 random.seed(1)
 np.random.seed(1)
-tf.set_random_seed(1)
+tf.random.set_seed(1)
+
 
 # Memory fraction, used mostly when trai8ning multiple agents
 #gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=MEMORY_FRACTION)
@@ -195,8 +198,8 @@ class DQNAgent:
         model.add(Flatten())
         model.add(Dense(64))
 
-        model.add(Dense(env.ACTIVATION_SPACE_SIZE, activation="linear"))
-        model.compile(loss="mse", optimizer=Adam(lr=0.001), metrics=['accuracy'])
+        model.add(Dense(env.ACTION_SPACE_SIZE, activation="linear"))
+        model.compile(loss="mse", optimizer=Adam(learning_rate=0.001), metrics=['accuracy'])
 
     def update_replay_memory(self, transition):
         self.replay_memory.append(transition)
@@ -315,3 +318,47 @@ class Blob:
 
 agent = DQNAgent()
         
+for episode in tqdm(range(1, EPISODES+1), ascii=True, unit="episode"):
+    agent.tensorboard.step = episode
+
+    episode_reward = 0
+    step = 1
+    current_state = env.reset()
+
+    done = False
+
+    while not done: 
+        if np.random.random() > epsilon:
+            action = np.argmax(agent.get_qs(current_state))
+        else:
+            action = np.random.random(0, env.ACTION_SPACE_SIZE)
+
+        new_state, reward, done = env.step(action)
+
+        episode_reward += reward
+
+        if SHOW_PREVIEW and not episode % AGGREGATE_STATS_EVERY:
+            env.render()
+
+        agent.update_replay_memory((current_state, action, reward, new_state, done))
+        agent.train(done, step)
+
+        current_state = new_state
+        step += 1
+
+    # Append episode reward to a list and log stats (every given number of episodes)
+    ep_rewards.append(episode_reward)
+    if not episode % AGGREGATE_STATS_EVERY or episode == 1:
+        average_reward = sum(ep_rewards[-AGGREGATE_STATS_EVERY:])/len(ep_rewards[-AGGREGATE_STATS_EVERY:])
+        min_reward = min(ep_rewards[-AGGREGATE_STATS_EVERY:])
+        max_reward = max(ep_rewards[-AGGREGATE_STATS_EVERY:])
+        agent.tensorboard.update_stats(reward_avg=average_reward, reward_min=min_reward, reward_max=max_reward, epsilon=epsilon)
+
+        # Save model, but only when min reward is greater or equal a set value
+        if average_reward >= MIN_REWARD:
+            agent.model.save(f'models/{MODEL_NAME}__{max_reward:_>7.2f}max_{average_reward:_>7.2f}avg_{min_reward:_>7.2f}min__{int(time.time())}.model')
+
+    # Decay epsilon
+    if epsilon > MIN_EPSILON:
+        epsilon *= EPSILON_DECAY
+        epsilon = max(MIN_EPSILON, epsilon)
